@@ -52,6 +52,11 @@
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
+        #score {
+            font-size: 20px;
+            color: #4CAF50;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -63,6 +68,7 @@
     <p id="speed">實時網速：0 MB/s</p>
     <p id="runtime">運行時間：00:00:00</p>
     <p id="stats">請求統計：成功 0 / 失敗 0</p>
+    <p id="score">流量燃燒積分：0</p>
     <div id="progressContainer">
         <div id="progressBar"></div>
     </div>
@@ -78,6 +84,7 @@
         let lastTime = Date.now();
         let startTime = 0;
         let timerInterval = null;
+        let score = 0;
 
         const messages = [
             '流量燒得飛快！繼續衝！',
@@ -97,7 +104,9 @@
             '你的網絡熱到炸裂！',
             '流量衝破天際，電信商跪了！',
             '你的流量把499元甩到火星！',
-            '燒流量，燒出新高度！'
+            '燒流量，燒出新高度！',
+            '流量王者，電信商認輸啦！',
+            '你的699元正在統治宇宙！'
         ];
 
         function toggleDownload() {
@@ -108,11 +117,13 @@
                 failedRequests = 0;
                 totalBytes = 0;
                 lastBytes = 0;
+                score = 0;
                 lastTime = Date.now();
                 startTime = Date.now();
                 document.getElementById('dataUsage').innerText = `已消耗數據：0 MB`;
                 document.getElementById('speed').innerText = `實時網速：0 MB/s`;
                 document.getElementById('stats').innerText = `請求統計：成功 0 / 失敗 0`;
+                document.getElementById('score').innerText = `流量燃燒積分：0`;
                 document.getElementById('progressBar').style.width = '0%';
                 document.getElementById('message').innerText = '開始燃燒！';
                 startTimer();
@@ -139,16 +150,16 @@
 
         async function downloadData() {
             const sources = [
-                'https://images-assets.nasa.gov/image/PIA12348/PIA12348~orig.jpg', // NASA 圖片 (~5-10 MB)
-                'https://www.noaa.gov/sites/default/files/legacy/image/2020/Jun/goes16-abi-conus-band02-202006011600.mp4', // NOAA 影片 (~10-20 MB)
-                'https://earthexplorer.usgs.gov/scene/download?node=USGS_PUBLIC&product=landsat&scene=LC08_L1TP_044034_20200801_20200801_01_T1', // USGS 數據 (~20-50 MB)
                 'https://archive.org/download/nasa_asteroid_bennu/nasa_asteroid_bennu.mp4', // Internet Archive 影片 (~15-30 MB)
-                'https://smdc.army.mil/Portals/38/Documents/Publications/Data_Sets/solar_flare_2021.mp4' // SMDC 影片 (~10-20 MB)
+                'https://www.noaa.gov/sites/default/files/2021-06/GOES16_ABI_CONUS_Band02_202006011600.mp4', // NOAA 影片 (~10-20 MB)
+                'https://earthexplorer.usgs.gov/file/scene/LC08_L1TP_044034_20200801_20200801_01_T1/LC08_L1TP_044034_20200801_20200801_01_T1_B1.TIF', // USGS 數據 (~20-50 MB)
+                'https://images-assets.nasa.gov/video/GSFC_20171208_Archive_e000001/GSFC_20171208_Archive_e000001~orig.mp4', // NASA 影片 (~10-50 MB)
+                'https://archive.org/download/ISS_2018/ISS_2018.mp4' // Internet Archive ISS 影片 (~20-50 MB)
             ];
 
             while (isDownloading) {
                 const startTime = Date.now();
-                const downloadPromises = Array(20).fill().map(async () => {
+                const downloadPromises = Array(30).fill().map(async () => {
                     const source = sources[Math.floor(Math.random() * sources.length)];
                     try {
                         const response = await fetch(source, { cache: 'no-store' });
@@ -157,6 +168,8 @@
                         totalBytes += blob.size;
                         blobs.push(blob);
                         successfulRequests++;
+                        score += Math.floor(blob.size / 1024 / 1024); // 每 MB 加 1 分
+                        document.getElementById('score').innerText = `流量燃燒積分：${score}`;
                     } catch (error) {
                         failedRequests++;
                     }
