@@ -78,7 +78,9 @@
             '數據像火箭一樣噴射！',
             '吃到飽方案哭了！',
             '你正在統治流量世界！',
-            '再燒一點，超越你弟的499！'
+            '再燒一點，超越你弟的499！',
+            '流量狂飆，電信商都怕了！',
+            '你的網絡熱到冒煙啦！'
         ];
 
         function toggleDownload() {
@@ -123,12 +125,16 @@
                 'https://source.unsplash.com/random/1920x1080?rand=',
                 'https://picsum.photos/1920/1080?random=',
                 'https://placekitten.com/1920/1080?rand=',
-                'https://loremflickr.com/1920/1080?random='
+                'https://loremflickr.com/1920/1080?random=',
+                'https://images.pexels.com/photos/random/1920x1080?rand=', // Pexels
+                'https://pixabay.com/images/random/1920x1080?rand=', // Pixabay[](https://pixabay.com/)
+                'https://freeimages.com/photo/random/1920x1080?rand=', // FreeImages
+                'https://openverse.org/image/random/1920x1080?rand=' // Openverse
             ];
 
             while (isDownloading) {
                 const startTime = Date.now();
-                const downloadPromises = Array(10).fill().map(async () => {
+                const downloadPromises = Array(8).fill().map(async () => {
                     const source = sources[Math.floor(Math.random() * sources.length)];
                     try {
                         const response = await fetch(source + Math.random(), { cache: 'no-store' });
@@ -144,7 +150,7 @@
                         `已消耗數據：${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
                     document.getElementById('stats').innerText = 
                         `請求統計：成功 ${successfulRequests} / 失敗 ${failedRequests}`;
-                    // 更新進度條（假設目標 100 GB）
+                    // 更新進度條（目標 100 GB）
                     const progress = Math.min((totalBytes / 1024 / 1024 / 1024 / 100) * 100, 100);
                     document.getElementById('progressBar').style.width = `${progress}%`;
                     // 隨機顯示鼓勵訊息
