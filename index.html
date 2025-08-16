@@ -10,18 +10,78 @@
             text-align: center;
             padding: 50px;
             background-color: #f0f0f0;
+            max-width: 800px;
+            margin: 0 auto;
         }
         button {
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
         }
-        #status, #dataUsage, #errorLog {
-            margin-top: 20px;
-            font-size: 18px;
+        button:hover {
+            background-color: #45a049;
+        }
+        button:active {
+            background-color: #3e8e41;
+        }
+        .stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .stat-box {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            min-width: 200px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
         }
         #errorLog {
             color: red;
+            margin-top: 20px;
+            min-height: 20px;
+        }
+        #connectionStatus {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .online {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .offline {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #ddd;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        #speedBar {
+            height: 20px;
+            background-color: #4CAF50;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.5s;
         }
     </style>
 </head>
@@ -29,20 +89,74 @@
     <h1>超高速網絡流量消耗工具</h1>
     <p>點擊按鈕開始或停止消耗網絡流量</p>
     <button onclick="toggleDownload()">開始/停止</button>
-    <p id="status">狀態：停止</p>
-    <p id="dataUsage">已消耗數據：0 MB</p>
-    <p id="errorLog"></p>
+    
+    <div id="connectionStatus" class="offline">網絡狀態: 離線</div>
+    
+    <div class="progress-container">
+        <div id="speedBar"></div>
+    </div>
+    
+    <div class="stats-container">
+        <div class="stat-box">
+            <div class="stat-label">當前狀態</div>
+            <div class="stat-value" id="status">停止</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">下載速度</div>
+            <div class="stat-value" id="speed">0 MB/s</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">已消耗數據</div>
+            <div class="stat-value" id="dataUsage">0 MB</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">活躍連接數</div>
+            <div class="stat-value" id="activeConnections">0</div>
+        </div>
+    </div>
+    
+    <div id="errorLog"></div>
 
     <script>
         let isDownloading = false;
         let totalBytes = 0;
         let blobs = [];
+        let lastBytes = 0;
+        let lastTime = 0;
+        let activeConnections = 0;
+        let maxSpeed = 0;
+        let speedHistory = [];
+        const HISTORY_SIZE = 10;
+        
+        // 檢查網絡狀態
+        function updateNetworkStatus() {
+            const statusElement = document.getElementById('connectionStatus');
+            if (navigator.onLine) {
+                statusElement.textContent = '網絡狀態: 在線';
+                statusElement.className = 'online';
+            } else {
+                statusElement.textContent = '網絡狀態: 離線';
+                statusElement.className = 'offline';
+                if (isDownloading) {
+                    toggleDownload();
+                    document.getElementById('errorLog').innerText = '網絡連接已斷開，自動停止下載';
+                }
+            }
+        }
+        
+        // 初始化網絡狀態監聽
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+        updateNetworkStatus();
 
         function toggleDownload() {
             isDownloading = !isDownloading;
-            document.getElementById('status').innerText = `狀態：${isDownloading ? '運行中' : '停止'}`;
+            document.getElementById('status').innerText = isDownloading ? '運行中' : '停止';
             document.getElementById('errorLog').innerText = '';
+            
             if (isDownloading) {
+                lastBytes = totalBytes;
+                lastTime = Date.now();
                 downloadData();
             } else {
                 clearBlobs();
@@ -52,34 +166,90 @@
         async function downloadData() {
             const sources = [
                 'https://source.unsplash.com/random/1920x1080?rand=',
-                'https://picsum.photos/1920/1080?random='
-            ]; // 備用資源
+                'https://picsum.photos/1920/1080?random=',
+                'https://placekitten.com/1920/1080?rand=',
+                'https://source.unsplash.com/random/1600x900?rand=',
+                'https://picsum.photos/1600/900?random='
+            ];
 
             while (isDownloading) {
                 try {
-                    const downloadPromises = Array(8).fill().map(() => {
-                        // 隨機選擇資源
+                    // 動態調整並行連接數 (3-8個)
+                    const connectionCount = Math.min(8, Math.max(3, Math.floor(speedHistory.length > 0 ? 
+                        (8 - Math.floor(speedHistory.reduce((a, b) => a + b, 0) / speedHistory.length / 10)) : 5));
+                    
+                    activeConnections = connectionCount;
+                    document.getElementById('activeConnections').innerText = activeConnections;
+                    
+                    const downloadPromises = Array(connectionCount).fill().map(async () => {
                         const source = sources[Math.floor(Math.random() * sources.length)];
-                        return fetch(source + Math.random(), { cache: 'no-store' })
-                            .then(response => {
+                        let attempts = 3;
+                        while (attempts > 0) {
+                            try {
+                                const response = await fetch(source + Math.random(), { 
+                                    cache: 'no-store',
+                                    mode: 'no-cors'
+                                });
                                 if (!response.ok) throw new Error(`HTTP 錯誤: ${response.status}`);
-                                return response.blob();
-                            })
-                            .then(blob => {
+                                const blob = await response.blob();
                                 totalBytes += blob.size;
                                 blobs.push(blob);
-                                document.getElementById('dataUsage').innerText = 
-                                    `已消耗數據：${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
-                            });
+                                return;
+                            } catch (error) {
+                                attempts--;
+                                if (attempts === 0) throw error;
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                            }
+                        }
                     });
+                    
                     await Promise.all(downloadPromises);
+                    
+                    // 計算速度
+                    const now = Date.now();
+                    const timeDiff = (now - lastTime) / 1000; // 秒
+                    if (timeDiff > 0.5) { // 至少0.5秒更新一次速度
+                        const bytesDiff = totalBytes - lastBytes;
+                        const speed = bytesDiff / timeDiff / 1024 / 1024; // MB/s
+                        
+                        speedHistory.push(speed);
+                        if (speedHistory.length > HISTORY_SIZE) {
+                            speedHistory.shift();
+                        }
+                        
+                        const avgSpeed = speedHistory.reduce((a, b) => a + b, 0) / speedHistory.length;
+                        
+                        document.getElementById('speed').innerText = `${speed.toFixed(2)} MB/s (平均: ${avgSpeed.toFixed(2)} MB/s)`;
+                        document.getElementById('dataUsage').innerText = `${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
+                        
+                        // 更新速度條
+                        const speedBar = document.getElementById('speedBar');
+                        const percentage = Math.min(100, speed / 10 * 100); // 假設10MB/s為100%
+                        speedBar.style.width = `${percentage}%`;
+                        
+                        // 更新顏色基於速度
+                        if (speed > 5) {
+                            speedBar.style.backgroundColor = '#4CAF50'; // 綠色
+                        } else if (speed > 2) {
+                            speedBar.style.backgroundColor = '#FFC107'; // 黃色
+                        } else {
+                            speedBar.style.backgroundColor = '#F44336'; // 紅色
+                        }
+                        
+                        lastBytes = totalBytes;
+                        lastTime = now;
+                    }
                 } catch (error) {
                     document.getElementById('errorLog').innerText = `錯誤：${error.message}`;
                     console.error('下載失敗:', error);
                 }
-                // 延遲 100ms
-                await new Promise(resolve => setTimeout(resolve, 100));
-                // 每 50 次循環清理記憶體
+                
+                // 動態調整延遲 (50-500ms)
+                const delay = Math.max(50, Math.min(500, 500 - speedHistory.length > 0 ? 
+                    speedHistory[speedHistory.length - 1] * 50 : 200));
+                await new Promise(resolve => setTimeout(resolve, delay));
+                
+                // 記憶體管理
                 if (blobs.length > 50) {
                     clearBlobs();
                 }
@@ -89,10 +259,12 @@
         function clearBlobs() {
             blobs.forEach(blob => URL.revokeObjectURL(blob));
             blobs = [];
+            activeConnections = 0;
+            document.getElementById('activeConnections').innerText = activeConnections;
             console.log('已清理記憶體');
         }
 
-        // 每 30 秒自動清理記憶體
+        // 每30秒自動清理記憶體
         setInterval(() => {
             if (isDownloading) {
                 clearBlobs();
