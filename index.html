@@ -74,13 +74,15 @@
 
         const messages = [
             '流量燒得飛快！繼續衝！',
-            '哇，你的網絡在起飛！',
-            '數據像火箭一樣噴射！',
-            '吃到飽方案哭了！',
+            '你的網絡在起飛，簡直無敵！',
+            '數據像火箭噴射，電信商瑟瑟發抖！',
+            '吃到飽方案哭了，699元超值！',
             '你正在統治流量世界！',
-            '再燒一點，超越你弟的499！',
+            '燃燒中',
             '流量狂飆，電信商都怕了！',
-            '你的網絡熱到冒煙啦！'
+            '燒吧！讓流量熱到冒煙！',
+            '你的4G正在開party！',
+            '流量消耗王者，誰與爭鋒！'
         ];
 
         function toggleDownload() {
@@ -126,15 +128,17 @@
                 'https://picsum.photos/1920/1080?random=',
                 'https://placekitten.com/1920/1080?rand=',
                 'https://loremflickr.com/1920/1080?random=',
-                'https://images.pexels.com/photos/random/1920x1080?rand=', // Pexels
-                'https://pixabay.com/images/random/1920x1080?rand=', // Pixabay[](https://pixabay.com/)
-                'https://freeimages.com/photo/random/1920x1080?rand=', // FreeImages
-                'https://openverse.org/image/random/1920x1080?rand=' // Openverse
+                'https://images.pexels.com/photos/random/1920x1080?rand=',
+                'https://pixabay.com/images/random/1920x1080?rand=',
+                'https://publicdomainpictures.net/pictures/random/1920x1080?rand=',
+                'https://api.flickr.com/services/feeds/photos_public.gne?format=json&rand=', // Flickr公開圖片
+                'https://images-assets.nasa.gov/image/random/1920x1080?rand=', // NASA圖片
+                'https://commons.wikimedia.org/wiki/Special:Random/File?rand=' // Wikimedia
             ];
 
             while (isDownloading) {
                 const startTime = Date.now();
-                const downloadPromises = Array(8).fill().map(async () => {
+                const downloadPromises = Array(6).fill().map(async () => {
                     const source = sources[Math.floor(Math.random() * sources.length)];
                     try {
                         const response = await fetch(source + Math.random(), { cache: 'no-store' });
@@ -150,7 +154,7 @@
                         `已消耗數據：${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
                     document.getElementById('stats').innerText = 
                         `請求統計：成功 ${successfulRequests} / 失敗 ${failedRequests}`;
-                    // 更新進度條（目標 100 GB）
+                    // 更新進度條（目標100 GB）
                     const progress = Math.min((totalBytes / 1024 / 1024 / 1024 / 100) * 100, 100);
                     document.getElementById('progressBar').style.width = `${progress}%`;
                     // 隨機顯示鼓勵訊息
@@ -170,9 +174,9 @@
                 lastBytes = totalBytes;
                 lastTime = currentTime;
 
-                // 延遲 100ms
+                // 延遲100ms
                 await new Promise(resolve => setTimeout(resolve, 100));
-                // 每 50 次清理記憶體
+                // 每50次清理記憶體
                 if (blobs.length > 50) {
                     clearBlobs();
                 }
@@ -185,7 +189,7 @@
             console.log('已清理記憶體');
         }
 
-        // 每 30 秒自動清理記憶體
+        // 每30秒自動清理記憶體
         setInterval(() => {
             if (isDownloading) {
                 clearBlobs();
