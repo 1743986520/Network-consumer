@@ -6,98 +6,272 @@
     <title>超高速網絡流量消耗工具</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
             text-align: center;
-            padding: 50px;
-            background-color: #f0f0f0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 12px 24px;
+            font-size: 18px;
             cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: all 0.3s;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
         }
         #status, #dataUsage, #errorLog {
-            margin-top: 20px;
+            margin: 20px 0;
             font-size: 18px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #status {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+        }
+        #dataUsage {
+            background-color: #e8f4fc;
+            border: 1px solid #b8d8f8;
+            font-weight: bold;
+            color: #2c3e50;
         }
         #errorLog {
-            color: red;
+            color: #e74c3c;
+            background-color: #fde8e8;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #7f8c8d;
+            text-align: left;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #3498db;
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .stat-box {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            min-width: 120px;
         }
     </style>
 </head>
 <body>
-    <h1>超高速網絡流量消耗工具</h1>
-    <p>點擊按鈕開始或停止消耗網絡流量</p>
-    <button onclick="toggleDownload()">開始/停止</button>
-    <p id="status">狀態：停止</p>
-    <p id="dataUsage">已消耗數據：0 MB</p>
-    <p id="errorLog"></p>
+    <div class="container">
+        <h1>超高速網絡流量消耗工具</h1>
+        <p>點擊按鈕開始或停止消耗網絡流量</p>
+        
+        <button onclick="toggleDownload()">開始消耗流量</button>
+        <button onclick="resetCounter()">重置計數器</button>
+        
+        <div class="progress-container">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div>狀態</div>
+                <div id="status">停止</div>
+            </div>
+            <div class="stat-box">
+                <div>已消耗數據</div>
+                <div id="dataUsage">0 MB</div>
+            </div>
+            <div class="stat-box">
+                <div>下載速度</div>
+                <div id="speed">0 MB/s</div>
+            </div>
+        </div>
+        
+        <p id="errorLog"></p>
+        
+        <div class="info">
+            <h3>使用說明：</h3>
+            <p>1. 點擊「開始消耗流量」按鈕開始測試</p>
+            <p>2. 點擊「重置計數器」可以重新計算流量</p>
+            <p>3. 數據會自動更新，顯示已消耗的流量和當前速度</p>
+            <p>4. 請注意，這會消耗您的網絡流量，請謹慎使用</p>
+        </div>
+    </div>
 
     <script>
         let isDownloading = false;
         let totalBytes = 0;
         let blobs = [];
+        let lastBytes = 0;
+        let lastTime = Date.now();
+        let speed = 0;
+        let downloadPromises = [];
+        
+        // 圖片來源（隨機圖片API）
+        const sources = [
+            'https://source.unsplash.com/random/1920x1080?rand=',
+            'https://picsum.photos/1920/1080?random=',
+            'https://picsum.photos/1600/900?random=',
+            'https://picsum.photos/1280/720?random='
+        ];
 
         function toggleDownload() {
             isDownloading = !isDownloading;
-            document.getElementById('status').innerText = `狀態：${isDownloading ? '運行中' : '停止'}`;
+            document.getElementById('status').innerText = isDownloading ? '運行中' : '停止';
             document.getElementById('errorLog').innerText = '';
+            
             if (isDownloading) {
+                document.querySelector('button').innerText = '停止消耗流量';
+                lastTime = Date.now();
+                lastBytes = totalBytes;
                 downloadData();
             } else {
+                document.querySelector('button').innerText = '開始消耗流量';
                 clearBlobs();
+                cancelDownloads();
             }
         }
 
-        async function downloadData() {
-            const sources = [
-                'https://source.unsplash.com/random/1920x1080?rand=',
-                'https://picsum.photos/1920/1080?random='
-            ]; // 備用資源
+        function resetCounter() {
+            if (!isDownloading) {
+                totalBytes = 0;
+                updateDisplay();
+            } else {
+                document.getElementById('errorLog').innerText = '請先停止下載再重置計數器';
+            }
+        }
 
+        function cancelDownloads() {
+            // 取消所有進行中的下載
+            downloadPromises.forEach(p => {
+                if (p && p.abort) p.abort();
+            });
+            downloadPromises = [];
+        }
+
+        async function downloadData() {
             while (isDownloading) {
                 try {
-                    const downloadPromises = Array(8).fill().map(() => {
-                        // 隨機選擇資源
+                    // 創建8個並行下載
+                    downloadPromises = Array(8).fill().map(() => {
+                        const controller = new AbortController();
+                        const signal = controller.signal;
+                        
                         const source = sources[Math.floor(Math.random() * sources.length)];
-                        return fetch(source + Math.random(), { cache: 'no-store' })
-                            .then(response => {
-                                if (!response.ok) throw new Error(`HTTP 錯誤: ${response.status}`);
-                                return response.blob();
-                            })
-                            .then(blob => {
-                                totalBytes += blob.size;
-                                blobs.push(blob);
-                                document.getElementById('dataUsage').innerText = 
-                                    `已消耗數據：${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
-                            });
+                        const promise = fetch(source + Math.random(), { 
+                            cache: 'no-store',
+                            signal: signal
+                        })
+                        .then(response => {
+                            if (!response.ok) throw new Error(`HTTP 錯誤: ${response.status}`);
+                            return response.blob();
+                        })
+                        .then(blob => {
+                            totalBytes += blob.size;
+                            blobs.push(blob);
+                            updateDisplay();
+                            updateSpeed();
+                        })
+                        .catch(err => {
+                            if (err.name !== 'AbortError') {
+                                document.getElementById('errorLog').innerText = `下載錯誤: ${err.message}`;
+                                console.error('下載失敗:', err);
+                            }
+                        });
+                        
+                        promise.abort = () => controller.abort();
+                        return promise;
                     });
+                    
                     await Promise.all(downloadPromises);
+                    
+                    // 短暫延遲以避免過度佔用CPU
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    
+                    // 定期清理記憶體
+                    if (blobs.length > 30) {
+                        clearBlobs();
+                    }
                 } catch (error) {
                     document.getElementById('errorLog').innerText = `錯誤：${error.message}`;
                     console.error('下載失敗:', error);
                 }
-                // 延遲 100ms
-                await new Promise(resolve => setTimeout(resolve, 100));
-                // 每 50 次循環清理記憶體
-                if (blobs.length > 50) {
-                    clearBlobs();
-                }
+            }
+        }
+
+        function updateDisplay() {
+            const mb = totalBytes / 1024 / 1024;
+            document.getElementById('dataUsage').innerText = `${mb.toFixed(2)} MB`;
+            
+            // 更新進度條 (每100MB為一個階段)
+            const progress = (mb % 100) / 100 * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+        }
+
+        function updateSpeed() {
+            const now = Date.now();
+            const timeDiff = (now - lastTime) / 1000; // 秒
+            if (timeDiff >= 1) { // 每秒更新一次速度
+                const bytesDiff = totalBytes - lastBytes;
+                speed = (bytesDiff / 1024 / 1024) / timeDiff; // MB/s
+                document.getElementById('speed').innerText = `${speed.toFixed(2)} MB/s`;
+                
+                lastBytes = totalBytes;
+                lastTime = now;
             }
         }
 
         function clearBlobs() {
-            blobs.forEach(blob => URL.revokeObjectURL(blob));
+            blobs.forEach(blob => {
+                if (blob instanceof Blob) {
+                    URL.revokeObjectURL(URL.createObjectURL(blob));
+                }
+            });
             blobs = [];
-            console.log('已清理記憶體');
         }
 
-        // 每 30 秒自動清理記憶體
-        setInterval(() => {
+        // 頁面卸載時清理
+        window.addEventListener('beforeunload', () => {
             if (isDownloading) {
+                cancelDownloads();
                 clearBlobs();
             }
-        }, 30000);
+        });
     </script>
 </body>
 </html>
