@@ -16,9 +16,12 @@
             font-size: 16px;
             cursor: pointer;
         }
-        #status {
+        #status, #dataUsage, #errorLog {
             margin-top: 20px;
             font-size: 18px;
+        }
+        #errorLog {
+            color: red;
         }
     </style>
 </head>
@@ -28,47 +31,58 @@
     <button onclick="toggleDownload()">開始/停止</button>
     <p id="status">狀態：停止</p>
     <p id="dataUsage">已消耗數據：0 MB</p>
+    <p id="errorLog"></p>
 
     <script>
         let isDownloading = false;
         let totalBytes = 0;
-        let blobs = []; // 儲存 blob 以便清理
+        let blobs = [];
 
         function toggleDownload() {
             isDownloading = !isDownloading;
             document.getElementById('status').innerText = `狀態：${isDownloading ? '運行中' : '停止'}`;
+            document.getElementById('errorLog').innerText = '';
             if (isDownloading) {
                 downloadData();
             } else {
-                clearBlobs(); // 停止時清理所有 blob
+                clearBlobs();
             }
         }
 
         async function downloadData() {
+            const sources = [
+                'https://source.unsplash.com/random/1920x1080?rand=',
+                'https://picsum.photos/1920/1080?random='
+            ]; // 備用資源
+
             while (isDownloading) {
                 try {
-                    // 同時發起 10 個並行下載請求
-                    const downloadPromises = Array(10).fill().map(() =>
-                        fetch('https://source.unsplash.com/random/1920x1080?rand=' + Math.random())
-                            .then(response => response.blob())
+                    const downloadPromises = Array(8).fill().map(() => {
+                        // 隨機選擇資源
+                        const source = sources[Math.floor(Math.random() * sources.length)];
+                        return fetch(source + Math.random(), { cache: 'no-store' })
+                            .then(response => {
+                                if (!response.ok) throw new Error(`HTTP 錯誤: ${response.status}`);
+                                return response.blob();
+                            })
                             .then(blob => {
                                 totalBytes += blob.size;
-                                blobs.push(blob); // 儲存 blob
+                                blobs.push(blob);
                                 document.getElementById('dataUsage').innerText = 
                                     `已消耗數據：${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
-                            })
-                    );
+                            });
+                    });
                     await Promise.all(downloadPromises);
-
-                    // 每 10 次循環清理一次記憶體
-                    if (blobs.length > 100) {
-                        clearBlobs();
-                    }
                 } catch (error) {
+                    document.getElementById('errorLog').innerText = `錯誤：${error.message}`;
                     console.error('下載失敗:', error);
                 }
-                // 縮減延遲到 100ms，提升速度
+                // 延遲 100ms
                 await new Promise(resolve => setTimeout(resolve, 100));
+                // 每 50 次循環清理記憶體
+                if (blobs.length > 50) {
+                    clearBlobs();
+                }
             }
         }
 
@@ -78,12 +92,12 @@
             console.log('已清理記憶體');
         }
 
-        // 每 60 秒自動清理一次，防止記憶體累積
+        // 每 30 秒自動清理記憶體
         setInterval(() => {
             if (isDownloading) {
                 clearBlobs();
             }
-        }, 60000);
+        }, 30000);
     </script>
 </body>
 </html>
