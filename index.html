@@ -78,11 +78,13 @@
             '數據像火箭噴射，電信商瑟瑟發抖！',
             '吃到飽方案哭了，699元超值！',
             '你正在統治流量世界！',
-            '燃燒中',
+            '你弟的499元完全比不上！',
             '流量狂飆，電信商都怕了！',
             '燒吧！讓流量熱到冒煙！',
             '你的4G正在開party！',
-            '流量消耗王者，誰與爭鋒！'
+            '流量消耗王者，誰與爭鋒！',
+            '499元看了都流淚！',
+            '你的流量讓網路沸騰！'
         ];
 
         function toggleDownload() {
@@ -131,25 +133,23 @@
                 'https://images.pexels.com/photos/random/1920x1080?rand=',
                 'https://pixabay.com/images/random/1920x1080?rand=',
                 'https://publicdomainpictures.net/pictures/random/1920x1080?rand=',
-                'https://api.flickr.com/services/feeds/photos_public.gne?format=json&rand=', // Flickr公開圖片
-                'https://images-assets.nasa.gov/image/random/1920x1080?rand=', // NASA圖片
-                'https://commons.wikimedia.org/wiki/Special:Random/File?rand=' // Wikimedia
+                'https://burst.shopify.com/photos/random/1920x1080?rand=',
+                'https://gratisography.com/photo/random/1920x1080?rand=',
+                'https://stocksnap.io/photo/random/1920x1080?rand=',
+                'https://coverr.co/video/random/1920x1080?rand=', // 影片片段
+                'https://images-assets.nasa.gov/image/random/1920x1080?rand='
             ];
 
             while (isDownloading) {
                 const startTime = Date.now();
-                const downloadPromises = Array(6).fill().map(async () => {
-                    const source = sources[Math.floor(Math.random() * sources.length)];
-                    try {
-                        const response = await fetch(source + Math.random(), { cache: 'no-store' });
-                        if (!response.ok) throw new Error('HTTP 錯誤');
-                        const blob = await response.blob();
-                        totalBytes += blob.size;
-                        blobs.push(blob);
-                        successfulRequests++;
-                    } catch (error) {
-                        failedRequests++;
-                    }
+                const source = sources[Math.floor(Math.random() * sources.length)];
+                try {
+                    const response = await fetch(source + Math.random(), { cache: 'no-store' });
+                    if (!response.ok) throw new Error('HTTP 錯誤');
+                    const blob = await response.blob();
+                    totalBytes += blob.size;
+                    blobs.push(blob);
+                    successfulRequests++;
                     document.getElementById('dataUsage').innerText = 
                         `已消耗數據：${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
                     document.getElementById('stats').innerText = 
@@ -162,8 +162,11 @@
                         document.getElementById('message').innerText = 
                             messages[Math.floor(Math.random() * messages.length)];
                     }
-                });
-                await Promise.all(downloadPromises);
+                } catch (error) {
+                    failedRequests++;
+                    document.getElementById('stats').innerText = 
+                        `請求統計：成功 ${successfulRequests} / 失敗 ${failedRequests}`;
+                }
 
                 // 計算實時網速
                 const currentTime = Date.now();
@@ -174,8 +177,8 @@
                 lastBytes = totalBytes;
                 lastTime = currentTime;
 
-                // 延遲100ms
-                await new Promise(resolve => setTimeout(resolve, 100));
+                // 延遲50ms
+                await new Promise(resolve => setTimeout(resolve, 50));
                 // 每50次清理記憶體
                 if (blobs.length > 50) {
                     clearBlobs();
