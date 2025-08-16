@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>超高速網絡流量消耗工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background-color: #f0f0f0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>超高速網絡流量消耗工具</h1>
+    <p>點擊按鈕開始或停止消耗網絡流量</p>
+    <button onclick="toggleDownload()">開始/停止</button>
+    <p id="status">狀態：停止</p>
+    <p id="dataUsage">已消耗數據：0 MB</p>
+
+    <script>
+        let isDownloading = false;
+        let totalBytes = 0;
+        let blobs = []; // 儲存 blob 以便清理
+
+        function toggleDownload() {
+            isDownloading = !isDownloading;
+            document.getElementById('status').innerText = `狀態：${isDownloading ? '運行中' : '停止'}`;
+            if (isDownloading) {
+                downloadData();
+            } else {
+                clearBlobs(); // 停止時清理所有 blob
+            }
+        }
+
+        async function downloadData() {
+            while (isDownloading) {
+                try {
+                    // 同時發起 10 個並行下載請求
+                    const downloadPromises = Array(10).fill().map(() =>
+                        fetch('https://source.unsplash.com/random/1920x1080?rand=' + Math.random())
+                            .then(response => response.blob())
+                            .then(blob => {
+                                totalBytes += blob.size;
+                                blobs.push(blob); // 儲存 blob
+                                document.getElementById('dataUsage').innerText = 
+                                    `已消耗數據：${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
+                            })
+                    );
+                    await Promise.all(downloadPromises);
+
+                    // 每 10 次循環清理一次記憶體
+                    if (blobs.length > 100) {
+                        clearBlobs();
+                    }
+                } catch (error) {
+                    console.error('下載失敗:', error);
+                }
+                // 縮減延遲到 100ms，提升速度
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        function clearBlobs() {
+            blobs.forEach(blob => URL.revokeObjectURL(blob));
+            blobs = [];
+            console.log('已清理記憶體');
+        }
+
+        // 每 60 秒自動清理一次，防止記憶體累積
+        setInterval(() => {
+            if (isDownloading) {
+                clearBlobs();
+            }
+        }, 60000);
+    </script>
+</body>
+</html>
