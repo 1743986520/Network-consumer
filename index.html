@@ -16,12 +16,9 @@
             font-size: 16px;
             cursor: pointer;
         }
-        #status, #dataUsage, #speed, #stats, #errorLog {
+        #status, #dataUsage, #speed, #stats {
             margin-top: 20px;
             font-size: 18px;
-        }
-        #errorLog {
-            color: red;
         }
     </style>
 </head>
@@ -33,7 +30,6 @@
     <p id="dataUsage">已消耗數據：0 MB</p>
     <p id="speed">實時網速：0 MB/s</p>
     <p id="stats">請求統計：成功 0 / 失敗 0</p>
-    <p id="errorLog"></p>
 
     <script>
         let isDownloading = false;
@@ -47,7 +43,6 @@
         function toggleDownload() {
             isDownloading = !isDownloading;
             document.getElementById('status').innerText = `狀態：${isDownloading ? '運行中' : '停止'}`;
-            document.getElementById('errorLog').innerText = '';
             if (isDownloading) {
                 successfulRequests = 0;
                 failedRequests = 0;
@@ -73,54 +68,37 @@
 
             while (isDownloading) {
                 const startTime = Date.now();
-                try {
-                    // 並行請求數設為 4，平衡速度與穩定性
-                    const downloadPromises = Array(4).fill().map(async () => {
-                        const source = sources[Math.floor(Math.random() * sources.length)];
-                        let attempts = 3;
-                        while (attempts > 0) {
-                            try {
-                                const response = await fetch(source + Math.random(), { cache: 'no-store' });
-                                if (!response.ok) throw new Error(`HTTP 錯誤: ${response.status}`);
-                                const blob = await response.blob();
-                                totalBytes += blob.size;
-                                blobs.push(blob);
-                                successfulRequests++;
-                                document.getElementById('dataUsage').innerText = 
-                                    `已消耗數據：${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
-                                document.getElementById('stats').innerText = 
-                                    `請求統計：成功 ${successfulRequests} / 失敗 ${failedRequests}`;
-                                return;
-                            } catch (error) {
-                                attempts--;
-                                if (attempts === 0) {
-                                    failedRequests++;
-                                    document.getElementById('stats').innerText = 
-                                        `請求統計：成功 ${successfulRequests} / 失敗 ${failedRequests}`;
-                                    document.getElementById('errorLog').innerText = 
-                                        `錯誤：${error.message} (資源: ${source.split('?')[0]})`;
-                                    return;
-                                }
-                                await new Promise(resolve => setTimeout(resolve, 1000));
-                            }
-                        }
-                    });
-                    await Promise.all(downloadPromises);
+                // 並行請求數設為 10，最大化速度
+                const downloadPromises = Array(10).fill().map(async () => {
+                    const source = sources[Math.floor(Math.random() * sources.length)];
+                    try {
+                        const response = await fetch(source + Math.random(), { cache: 'no-store' });
+                        if (!response.ok) throw new Error('HTTP 錯誤');
+                        const blob = await response.blob();
+                        totalBytes += blob.size;
+                        blobs.push(blob);
+                        successfulRequests++;
+                    } catch (error) {
+                        failedRequests++;
+                    }
+                    document.getElementById('dataUsage').innerText = 
+                        `已消耗數據：${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
+                    document.getElementById('stats').innerText = 
+                        `請求統計：成功 ${successfulRequests} / 失敗 ${failedRequests}`;
+                });
+                await Promise.all(downloadPromises);
 
-                    // 計算實時網速
-                    const currentTime = Date.now();
-                    const timeDiff = (currentTime - lastTime) / 1000; // 秒
-                    const bytesDiff = totalBytes - lastBytes;
-                    const speed = (bytesDiff / 1024 / 1024 / timeDiff).toFixed(2); // MB/s
-                    document.getElementById('speed').innerText = `實時網速：${speed} MB/s`;
-                    lastBytes = totalBytes;
-                    lastTime = currentTime;
-                } catch (error) {
-                    document.getElementById('errorLog').innerText = `錯誤：${error.message}`;
-                    console.error('下載失敗:', error);
-                }
-                // 延遲 300ms
-                await new Promise(resolve => setTimeout(resolve, 300));
+                // 計算實時網速
+                const currentTime = Date.now();
+                const timeDiff = (currentTime - lastTime) / 1000; // 秒
+                const bytesDiff = totalBytes - lastBytes;
+                const speed = (bytesDiff / 1024 / 1024 / timeDiff).toFixed(2); // MB/s
+                document.getElementById('speed').innerText = `實時網速：${speed} MB/s`;
+                lastBytes = totalBytes;
+                lastTime = currentTime;
+
+                // 延遲 100ms，最大化速度
+                await new Promise(resolve => setTimeout(resolve, 100));
                 // 每 50 次清理記憶體
                 if (blobs.length > 50) {
                     clearBlobs();
