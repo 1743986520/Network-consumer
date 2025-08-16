@@ -15,14 +15,15 @@
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
-            background-color: #4CAF50;
+            background-color: #ff4d4d;
             color: white;
             border: none;
             border-radius: 5px;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
         button:hover {
             transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
         }
         #status, #dataUsage, #speed, #stats, #runtime, #message {
             margin-top: 20px;
@@ -38,12 +39,18 @@
         #progressBar {
             width: 0%;
             height: 20px;
-            background-color: #4CAF50;
-            transition: width 0.5s;
+            background: linear-gradient(45deg, #ff4d4d, #ff8c1a);
+            transition: width 0.5s ease-in-out;
         }
         #message {
             color: #e67e22;
             font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
@@ -84,7 +91,10 @@
             '你的4G正在開party！',
             '流量消耗王者，誰與爭鋒！',
             '499元看了都流淚！',
-            '你的流量讓網路沸騰！'
+            '你的流量讓網路沸騰！',
+            '流量燒到月球去啦！',
+            '699元無敵，499元靠邊站！',
+            '你的網絡熱到炸裂！'
         ];
 
         function toggleDownload() {
@@ -136,8 +146,11 @@
                 'https://burst.shopify.com/photos/random/1920x1080?rand=',
                 'https://gratisography.com/photo/random/1920x1080?rand=',
                 'https://stocksnap.io/photo/random/1920x1080?rand=',
-                'https://coverr.co/video/random/1920x1080?rand=', // 影片片段
-                'https://images-assets.nasa.gov/image/random/1920x1080?rand='
+                'https://coverr.co/video/random/1920x1080?rand=',
+                'https://images-assets.nasa.gov/image/random/1920x1080?rand=',
+                'https://isorepublic.com/photo/random/1920x1080?rand=',
+                'https://picjumbo.com/wp-content/uploads/random/1920x1080?rand=',
+                'https://www.rawpixel.com/image/random/1920x1080?rand='
             ];
 
             while (isDownloading) {
@@ -177,8 +190,8 @@
                 lastBytes = totalBytes;
                 lastTime = currentTime;
 
-                // 延遲50ms
-                await new Promise(resolve => setTimeout(resolve, 50));
+                // 延遲100ms
+                await new Promise(resolve => setTimeout(resolve, 100));
                 // 每50次清理記憶體
                 if (blobs.length > 50) {
                     clearBlobs();
