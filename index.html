@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>流量燃燒競賽</title>
+    <title>超高速網絡流量消耗工具</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,559 +11,186 @@
             padding: 50px;
             background-color: #f0f0f0;
         }
-        .game-container {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #e74c3c;
-            margin-bottom: 30px;
-        }
-        .scoreboard {
-            display: flex;
-            justify-content: space-around;
-            margin: 30px 0;
-            font-size: 24px;
-            font-weight: bold;
-        }
-        .player-score {
-            color: #3498db;
-        }
-        .ai-score {
-            color: #e74c3c;
-        }
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
         button {
-            padding: 12px 25px;
+            padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
             border: none;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-        #startBtn {
-            background-color: #2ecc71;
-            color: white;
-        }
-        #boostBtn {
-            background-color: #3498db;
-            color: white;
-        }
-        #hackBtn {
-            background-color: #9b59b6;
-            color: white;
+            border-radius: 5px;
+            transition: transform 0.2s;
         }
         button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transform: scale(1.1);
         }
-        button:disabled {
-            background-color: #95a5a6;
-            cursor: not-allowed;
-        }
-        .progress-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        .progress-bar {
-            height: 30px;
-            background-color: #ecf0f1;
-            border-radius: 15px;
-            overflow: hidden;
-            position: relative;
-        }
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            transition: width 0.3s;
-        }
-        #playerProgress {
-            background: linear-gradient(90deg, #3498db, #2980b9);
-        }
-        #aiProgress {
-            background: linear-gradient(90deg, #e74c3c, #c0392b);
-        }
-        .stats {
-            display: flex;
-            justify-content: space-around;
+        #status, #dataUsage, #speed, #stats, #runtime, #message {
             margin-top: 20px;
             font-size: 18px;
         }
-        .timer {
-            font-size: 28px;
-            font-weight: bold;
-            color: #2c3e50;
-            margin: 20px 0;
+        #progressContainer {
+            width: 80%;
+            margin: 20px auto;
+            background-color: #ddd;
+            border-radius: 5px;
+            overflow: hidden;
         }
-        .message {
-            font-size: 20px;
+        #progressBar {
+            width: 0%;
+            height: 20px;
+            background-color: #4CAF50;
+            transition: width 0.5s;
+        }
+        #message {
             color: #e67e22;
             font-weight: bold;
-            min-height: 30px;
-            margin: 20px 0;
-        }
-        .game-over {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            color: white;
-        }
-        .game-over h2 {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-        .game-over p {
-            font-size: 24px;
-            margin-bottom: 30px;
-        }
-        .game-over button {
-            background-color: #2ecc71;
-            color: white;
-            font-size: 20px;
-            padding: 15px 30px;
-        }
-        .skill-cooldown {
-            height: 5px;
-            background-color: #34495e;
-            width: 0%;
-            margin-top: 5px;
-            border-radius: 5px;
         }
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <h1>流量燃燒競賽</h1>
-        <p>在3分鐘內比AI消耗更多流量！</p>
-        
-        <div class="timer" id="timer">03:00</div>
-        
-        <div class="scoreboard">
-            <div class="player-score">玩家: <span id="playerScore">0</span></div>
-            <div>VS</div>
-            <div class="ai-score">AI: <span id="aiScore">0</span></div>
-        </div>
-        
-        <div class="progress-container">
-            <div>玩家進度</div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="playerProgress"></div>
-            </div>
-            <div>AI進度</div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="aiProgress"></div>
-            </div>
-        </div>
-        
-        <div class="controls">
-            <button id="startBtn">開始遊戲</button>
-            <button id="boostBtn" disabled>加速 (0/3)</button>
-            <button id="hackBtn" disabled>駭入AI (冷卻中)</button>
-        </div>
-        
-        <div class="skill-cooldown" id="hackCooldown"></div>
-        
-        <div class="message" id="message">準備開始比賽！</div>
-        
-        <div class="stats">
-            <div>玩家速度: <span id="playerSpeed">0 MB/s</span></div>
-            <div>AI速度: <span id="aiSpeed">0 MB/s</span></div>
-        </div>
+    <h1>超高速網絡流量消耗工具</h1>
+    <p>點擊按鈕開始燃燒你的流量！</p>
+    <button onclick="toggleDownload()">開始/停止</button>
+    <p id="status">狀態：停止</p>
+    <p id="dataUsage">已消耗數據：0 MB</p>
+    <p id="speed">實時網速：0 MB/s</p>
+    <p id="runtime">運行時間：00:00:00</p>
+    <p id="stats">請求統計：成功 0 / 失敗 0</p>
+    <div id="progressContainer">
+        <div id="progressBar"></div>
     </div>
-    
-    <div class="game-over" id="gameOver">
-        <h2 id="resultTitle">遊戲結束</h2>
-        <p id="resultMessage">你消耗了 0 MB，AI消耗了 0 MB</p>
-        <button id="restartBtn">再玩一次</button>
-    </div>
+    <p id="message">準備好燃燒流量，衝刺吧！</p>
 
     <script>
-        // 遊戲狀態
-        const gameState = {
-            isPlaying: false,
-            timeLeft: 180, // 3分鐘
-            playerScore: 0,
-            aiScore: 0,
-            playerSpeed: 0,
-            aiSpeed: 0,
-            boostCount: 3,
-            isHackOnCooldown: false,
-            aiDifficulty: 1, // 1-5
-            lastPlayerBytes: 0,
-            lastAiBytes: 0,
-            lastSpeedCalcTime: 0,
-            playerBytes: 0,
-            aiBytes: 0,
-            hackDuration: 0
-        };
-        
-        // DOM元素
-        const elements = {
-            startBtn: document.getElementById('startBtn'),
-            boostBtn: document.getElementById('boostBtn'),
-            hackBtn: document.getElementById('hackBtn'),
-            playerScore: document.getElementById('playerScore'),
-            aiScore: document.getElementById('aiScore'),
-            playerSpeed: document.getElementById('playerSpeed'),
-            aiSpeed: document.getElementById('aiSpeed'),
-            playerProgress: document.getElementById('playerProgress'),
-            aiProgress: document.getElementById('aiProgress'),
-            timer: document.getElementById('timer'),
-            message: document.getElementById('message'),
-            gameOver: document.getElementById('gameOver'),
-            resultTitle: document.getElementById('resultTitle'),
-            resultMessage: document.getElementById('resultMessage'),
-            restartBtn: document.getElementById('restartBtn'),
-            hackCooldown: document.getElementById('hackCooldown')
-        };
-        
-        // 遊戲變數
-        let gameInterval;
-        let speedCalcInterval;
-        let playerDownloadInterval;
-        let aiDownloadInterval;
-        let hackInterval;
-        let hackCooldownInterval;
-        
-        // 遊戲訊息
+        let isDownloading = false;
+        let totalBytes = 0;
+        let blobs = [];
+        let successfulRequests = 0;
+        let failedRequests = 0;
+        let lastBytes = 0;
+        let lastTime = Date.now();
+        let startTime = 0;
+        let timerInterval = null;
+
         const messages = [
-            '開始燃燒流量！',
             '流量燒得飛快！繼續衝！',
-            '你的網絡在起飛，簡直無敵！',
-            '數據像火箭噴射，電信商瑟瑟發抖！',
+            '哇，你的網絡在起飛！',
+            '數據像火箭一樣噴射！',
+            '吃到飽方案哭了！',
             '你正在統治流量世界！',
+            '再燒一點，超越你弟的499！',
             '流量狂飆，電信商都怕了！',
-            '你的4G正在開party！',
-            '流量消耗王者，誰與爭鋒！',
-            '你的流量讓網路沸騰！',
-            '流量燒到月球去啦！',
-            '你的網絡熱到炸裂！',
-            '流量衝破天際，電信商跪了！',
-            '燒流量，燒出新高度！',
-            '流量王者，電信商認輸啦！'
+            '你的網絡熱到冒煙啦！'
         ];
-        
-        // 下載來源
-        const downloadSources = [
-            'https://archive.org/download/nasa_asteroid_bennu/nasa_asteroid_bennu.mp4',
-            'https://www.noaa.gov/sites/default/files/2021-06/GOES16_ABI_CONUS_Band02_202006011600.mp4',
-            'https://earthexplorer.usgs.gov/file/scene/LC08_L1TP_044034_20200801_20200801_01_T1/LC08_L1TP_044034_20200801_20200801_01_T1_B1.TIF',
-            'https://images-assets.nasa.gov/video/GSFC_20171208_Archive_e000001/GSFC_20171208_Archive_e000001~orig.mp4',
-            'https://archive.org/download/ISS_2018/ISS_2018.mp4'
-        ];
-        
-        // 初始化遊戲
-        function initGame() {
-            elements.startBtn.addEventListener('click', startGame);
-            elements.boostBtn.addEventListener('click', useBoost);
-            elements.hackBtn.addEventListener('click', useHack);
-            elements.restartBtn.addEventListener('click', restartGame);
-            
-            updateUI();
-        }
-        
-        // 開始遊戲
-        function startGame() {
-            if (gameState.isPlaying) return;
-            
-            resetGame();
-            gameState.isPlaying = true;
-            gameState.lastSpeedCalcTime = Date.now();
-            
-            elements.startBtn.disabled = true;
-            elements.boostBtn.disabled = false;
-            elements.hackBtn.disabled = false;
-            
-            // 開始計時器
-            gameInterval = setInterval(updateGame, 1000);
-            
-            // 開始速度計算
-            speedCalcInterval = setInterval(calculateSpeeds, 2000);
-            
-            // 玩家下載
-            startPlayerDownload();
-            
-            // AI下載
-            startAiDownload();
-            
-            showRandomMessage();
-        }
-        
-        // 更新遊戲狀態
-        function updateGame() {
-            gameState.timeLeft--;
-            
-            // 更新計時器
-            const minutes = Math.floor(gameState.timeLeft / 60).toString().padStart(2, '0');
-            const seconds = (gameState.timeLeft % 60).toString().padStart(2, '0');
-            elements.timer.textContent = `${minutes}:${seconds}`;
-            
-            // 調整AI難度
-            adjustAiDifficulty();
-            
-            // 檢查遊戲結束
-            if (gameState.timeLeft <= 0) {
-                endGame();
+
+        function toggleDownload() {
+            isDownloading = !isDownloading;
+            document.getElementById('status').innerText = `狀態：${isDownloading ? '運行中' : '停止'}`;
+            if (isDownloading) {
+                successfulRequests = 0;
+                failedRequests = 0;
+                totalBytes = 0;
+                lastBytes = 0;
+                lastTime = Date.now();
+                startTime = Date.now();
+                document.getElementById('dataUsage').innerText = `已消耗數據：0 MB`;
+                document.getElementById('speed').innerText = `實時網速：0 MB/s`;
+                document.getElementById('stats').innerText = `請求統計：成功 0 / 失敗 0`;
+                document.getElementById('progressBar').style.width = '0%';
+                document.getElementById('message').innerText = '開始燃燒！';
+                startTimer();
+                downloadData();
+            } else {
+                clearBlobs();
+                clearInterval(timerInterval);
+                document.getElementById('runtime').innerText = '運行時間：00:00:00';
+                document.getElementById('message').innerText = '已暫停，快再來燒流量！';
             }
         }
-        
-        // 計算速度
-        function calculateSpeeds() {
-            const now = Date.now();
-            const timeDiff = (now - gameState.lastSpeedCalcTime) / 1000; // 秒
-            
-            // 玩家速度
-            const playerBytesDiff = gameState.playerBytes - gameState.lastPlayerBytes;
-            gameState.playerSpeed = (playerBytesDiff / 1024 / 1024 / timeDiff).toFixed(2);
-            gameState.lastPlayerBytes = gameState.playerBytes;
-            
-            // AI速度
-            const aiBytesDiff = gameState.aiBytes - gameState.lastAiBytes;
-            gameState.aiSpeed = (aiBytesDiff / 1024 / 1024 / timeDiff).toFixed(2);
-            gameState.lastAiBytes = gameState.aiBytes;
-            
-            gameState.lastSpeedCalcTime = now;
-            
-            updateUI();
-        }
-        
-        // 調整AI難度
-        function adjustAiDifficulty() {
-            // 根據玩家表現調整AI難度 (1-5)
-            const playerLead = gameState.playerScore - gameState.aiScore;
-            
-            if (playerLead > 50) {
-                gameState.aiDifficulty = 5; // 最大難度
-            } else if (playerLead > 30) {
-                gameState.aiDifficulty = 4;
-            } else if (playerLead > 10) {
-                gameState.aiDifficulty = 3;
-            } else if (playerLead < -30) {
-                gameState.aiDifficulty = 1; // 最低難度
-            } else if (playerLead < -10) {
-                gameState.aiDifficulty = 2;
-            }
-            
-            // 隨機波動增加趣味性
-            gameState.aiDifficulty += Math.random() > 0.7 ? 1 : 0;
-            gameState.aiDifficulty = Math.max(1, Math.min(5, gameState.aiDifficulty));
-        }
-        
-        // 開始玩家下載
-        function startPlayerDownload() {
-            playerDownloadInterval = setInterval(async () => {
-                try {
-                    const source = downloadSources[Math.floor(Math.random() * downloadSources.length)];
-                    const response = await fetch(source, { cache: 'no-store', mode: 'no-cors' });
-                    if (!response.ok) throw new Error('下載失敗');
-                    
-                    const blob = await response.blob();
-                    const size = blob.size;
-                    
-                    gameState.playerBytes += size;
-                    gameState.playerScore = Math.floor(gameState.playerBytes / 1024 / 1024);
-                    
-                    updateUI();
-                } catch (error) {
-                    console.log('玩家下載失敗');
-                }
-            }, 300);
-        }
-        
-        // 開始AI下載
-        function startAiDownload() {
-            aiDownloadInterval = setInterval(async () => {
-                // 根據難度和是否被駭入調整速度
-                const speedMultiplier = gameState.hackDuration > 0 ? 0.3 : gameState.aiDifficulty * 0.3;
-                
-                // 模擬AI下載
-                const simulatedSize = Math.floor(Math.random() * 5 * 1024 * 1024 * speedMultiplier);
-                gameState.aiBytes += simulatedSize;
-                gameState.aiScore = Math.floor(gameState.aiBytes / 1024 / 1024);
-                
-                updateUI();
-            }, 300);
-        }
-        
-        // 使用加速
-        function useBoost() {
-            if (gameState.boostCount <= 0 || !gameState.isPlaying) return;
-            
-            gameState.boostCount--;
-            
-            // 加速效果 - 暫時增加下載速度
-            clearInterval(playerDownloadInterval);
-            playerDownloadInterval = setInterval(async () => {
-                try {
-                    const source = downloadSources[Math.floor(Math.random() * downloadSources.length)];
-                    const response = await fetch(source, { cache: 'no-store', mode: 'no-cors' });
-                    if (!response.ok) throw new Error('下載失敗');
-                    
-                    const blob = await response.blob();
-                    const size = blob.size * 2; // 加速效果
-                    
-                    gameState.playerBytes += size;
-                    gameState.playerScore = Math.floor(gameState.playerBytes / 1024 / 1024);
-                    
-                    updateUI();
-                } catch (error) {
-                    console.log('玩家下載失敗');
-                }
-            }, 100); // 更快的間隔
-            
-            // 10秒後恢復正常速度
-            setTimeout(() => {
-                if (gameState.isPlaying) {
-                    clearInterval(playerDownloadInterval);
-                    startPlayerDownload();
-                }
-            }, 10000);
-            
-            elements.message.textContent = '加速啟動！10秒內下載速度加倍！';
-            updateUI();
-        }
-        
-        // 使用駭入技能
-        function useHack() {
-            if (gameState.isHackOnCooldown || !gameState.isPlaying) return;
-            
-            // 駭入效果 - 減緩AI速度
-            gameState.hackDuration = 15; // 15秒效果
-            
-            hackInterval = setInterval(() => {
-                gameState.hackDuration--;
-                
-                if (gameState.hackDuration <= 0) {
-                    clearInterval(hackInterval);
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (isDownloading) {
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const hours = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+                    const minutes = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+                    const seconds = String(elapsed % 60).padStart(2, '0');
+                    document.getElementById('runtime').innerText = `運行時間：${hours}:${minutes}:${seconds}`;
                 }
             }, 1000);
-            
-            // 冷卻時間
-            gameState.isHackOnCooldown = true;
-            elements.hackBtn.disabled = true;
-            elements.hackBtn.textContent = '駭入AI (冷卻中)';
-            
-            let cooldown = 100;
-            elements.hackCooldown.style.width = '100%';
-            
-            hackCooldownInterval = setInterval(() => {
-                cooldown--;
-                elements.hackCooldown.style.width = `${cooldown}%`;
-                
-                if (cooldown <= 0) {
-                    clearInterval(hackCooldownInterval);
-                    gameState.isHackOnCooldown = false;
-                    elements.hackBtn.disabled = false;
-                    elements.hackBtn.textContent = '駭入AI';
+        }
+
+        async function downloadData() {
+            const sources = [
+                'https://source.unsplash.com/random/1920x1080?rand=',
+                'https://picsum.photos/1920/1080?random=',
+                'https://placekitten.com/1920/1080?rand=',
+                'https://loremflickr.com/1920/1080?random=',
+                'https://images.pexels.com/photos/random/1920x1080?rand=', // Pexels
+                'https://pixabay.com/images/random/1920x1080?rand=', // Pixabay[](https://pixabay.com/)
+                'https://freeimages.com/photo/random/1920x1080?rand=', // FreeImages
+                'https://openverse.org/image/random/1920x1080?rand=' // Openverse
+            ];
+
+            while (isDownloading) {
+                const startTime = Date.now();
+                const downloadPromises = Array(8).fill().map(async () => {
+                    const source = sources[Math.floor(Math.random() * sources.length)];
+                    try {
+                        const response = await fetch(source + Math.random(), { cache: 'no-store' });
+                        if (!response.ok) throw new Error('HTTP 錯誤');
+                        const blob = await response.blob();
+                        totalBytes += blob.size;
+                        blobs.push(blob);
+                        successfulRequests++;
+                    } catch (error) {
+                        failedRequests++;
+                    }
+                    document.getElementById('dataUsage').innerText = 
+                        `已消耗數據：${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
+                    document.getElementById('stats').innerText = 
+                        `請求統計：成功 ${successfulRequests} / 失敗 ${failedRequests}`;
+                    // 更新進度條（目標 100 GB）
+                    const progress = Math.min((totalBytes / 1024 / 1024 / 1024 / 100) * 100, 100);
+                    document.getElementById('progressBar').style.width = `${progress}%`;
+                    // 隨機顯示鼓勵訊息
+                    if (successfulRequests % 10 === 0) {
+                        document.getElementById('message').innerText = 
+                            messages[Math.floor(Math.random() * messages.length)];
+                    }
+                });
+                await Promise.all(downloadPromises);
+
+                // 計算實時網速
+                const currentTime = Date.now();
+                const timeDiff = (currentTime - lastTime) / 1000; // 秒
+                const bytesDiff = totalBytes - lastBytes;
+                const speed = (bytesDiff / 1024 / 1024 / timeDiff).toFixed(2); // MB/s
+                document.getElementById('speed').innerText = `實時網速：${speed} MB/s`;
+                lastBytes = totalBytes;
+                lastTime = currentTime;
+
+                // 延遲 100ms
+                await new Promise(resolve => setTimeout(resolve, 100));
+                // 每 50 次清理記憶體
+                if (blobs.length > 50) {
+                    clearBlobs();
                 }
-            }, 50);
-            
-            elements.message.textContent = '成功駭入AI！15秒內AI速度降低70%！';
-        }
-        
-        // 結束遊戲
-        function endGame() {
-            gameState.isPlaying = false;
-            
-            clearInterval(gameInterval);
-            clearInterval(speedCalcInterval);
-            clearInterval(playerDownloadInterval);
-            clearInterval(aiDownloadInterval);
-            if (hackInterval) clearInterval(hackInterval);
-            if (hackCooldownInterval) clearInterval(hackCooldownInterval);
-            
-            // 顯示結果
-            const playerMB = gameState.playerScore;
-            const aiMB = gameState.aiScore;
-            
-            elements.resultMessage.textContent = `你消耗了 ${playerMB} MB，AI消耗了 ${aiMB} MB`;
-            
-            if (playerMB > aiMB) {
-                elements.resultTitle.textContent = '恭喜你贏了！';
-                elements.resultMessage.textContent += ' 你擊敗了AI！';
-            } else if (playerMB < aiMB) {
-                elements.resultTitle.textContent = '遊戲結束';
-                elements.resultMessage.textContent += ' AI贏了，再試一次吧！';
-            } else {
-                elements.resultTitle.textContent = '平手！';
-                elements.resultMessage.textContent += ' 真是勢均力敵的比賽！';
             }
-            
-            elements.gameOver.style.display = 'flex';
         }
-        
-        // 重新開始遊戲
-        function restartGame() {
-            elements.gameOver.style.display = 'none';
-            startGame();
+
+        function clearBlobs() {
+            blobs.forEach(blob => URL.revokeObjectURL(blob));
+            blobs = [];
+            console.log('已清理記憶體');
         }
-        
-        // 重置遊戲狀態
-        function resetGame() {
-            gameState.timeLeft = 180;
-            gameState.playerScore = 0;
-            gameState.aiScore = 0;
-            gameState.playerSpeed = 0;
-            gameState.aiSpeed = 0;
-            gameState.boostCount = 3;
-            gameState.isHackOnCooldown = false;
-            gameState.aiDifficulty = 1;
-            gameState.lastPlayerBytes = 0;
-            gameState.lastAiBytes = 0;
-            gameState.playerBytes = 0;
-            gameState.aiBytes = 0;
-            gameState.hackDuration = 0;
-            
-            updateUI();
-        }
-        
-        // 更新UI
-        function updateUI() {
-            elements.playerScore.textContent = gameState.playerScore;
-            elements.aiScore.textContent = gameState.aiScore;
-            elements.playerSpeed.textContent = `${gameState.playerSpeed} MB/s`;
-            elements.aiSpeed.textContent = `${gameState.aiSpeed} MB/s`;
-            elements.boostBtn.textContent = `加速 (${gameState.boostCount}/3)`;
-            
-            // 更新進度條 (目標300MB)
-            const playerProgress = Math.min((gameState.playerScore / 300) * 100, 100);
-            const aiProgress = Math.min((gameState.aiScore / 300) * 100, 100);
-            
-            elements.playerProgress.style.width = `${playerProgress}%`;
-            elements.aiProgress.style.width = `${aiProgress}%`;
-        }
-        
-        // 顯示隨機訊息
-        function showRandomMessage() {
-            if (!gameState.isPlaying) return;
-            
-            const randomIndex = Math.floor(Math.random() * messages.length);
-            elements.message.textContent = messages[randomIndex];
-            
-            setTimeout(showRandomMessage, 5000);
-        }
-        
-        // 初始化遊戲
-        initGame();
+
+        // 每 30 秒自動清理記憶體
+        setInterval(() => {
+            if (isDownloading) {
+                clearBlobs();
+            }
+        }, 30000);
     </script>
 </body>
 </html>
