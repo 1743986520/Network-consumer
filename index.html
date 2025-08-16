@@ -52,33 +52,41 @@
         async function downloadData() {
             const sources = [
                 'https://source.unsplash.com/random/1920x1080?rand=',
-                'https://picsum.photos/1920/1080?random='
-            ]; // 備用資源
+                'https://picsum.photos/1920/1080?random=',
+                'https://placekitten.com/1920/1080?rand=' // 增加備用資源
+            ];
 
             while (isDownloading) {
                 try {
-                    const downloadPromises = Array(8).fill().map(() => {
+                    // 減少並行請求到 5，降低服務器壓力
+                    const downloadPromises = Array(5).fill().map(async () => {
                         // 隨機選擇資源
                         const source = sources[Math.floor(Math.random() * sources.length)];
-                        return fetch(source + Math.random(), { cache: 'no-store' })
-                            .then(response => {
+                        let attempts = 3; // 重試次數
+                        while (attempts > 0) {
+                            try {
+                                const response = await fetch(source + Math.random(), { cache: 'no-store' });
                                 if (!response.ok) throw new Error(`HTTP 錯誤: ${response.status}`);
-                                return response.blob();
-                            })
-                            .then(blob => {
+                                const blob = await response.blob();
                                 totalBytes += blob.size;
                                 blobs.push(blob);
                                 document.getElementById('dataUsage').innerText = 
                                     `已消耗數據：${(totalBytes / 1024 / 1024).toFixed(2)} MB`;
-                            });
+                                return; // 成功則退出重試
+                            } catch (error) {
+                                attempts--;
+                                if (attempts === 0) throw error; // 重試失敗則拋出錯誤
+                                await new Promise(resolve => setTimeout(resolve, 500)); // 延遲 500ms 後重試
+                            }
+                        }
                     });
                     await Promise.all(downloadPromises);
                 } catch (error) {
                     document.getElementById('errorLog').innerText = `錯誤：${error.message}`;
                     console.error('下載失敗:', error);
                 }
-                // 延遲 100ms
-                await new Promise(resolve => setTimeout(resolve, 100));
+                // 延遲 200ms，平衡速度與穩定性
+                await new Promise(resolve => setTimeout(resolve, 200));
                 // 每 50 次循環清理記憶體
                 if (blobs.length > 50) {
                     clearBlobs();
