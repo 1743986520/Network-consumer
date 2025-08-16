@@ -95,7 +95,9 @@
             '流量燒到月球去啦！',
             '699元無敵，499元靠邊站！',
             '你的網絡熱到炸裂！',
-            '流量衝破天際，電信商跪了！'
+            '流量衝破天際，電信商跪了！',
+            '你的流量把499元甩到火星！',
+            '燒流量，燒出新高度！'
         ];
 
         function toggleDownload() {
@@ -137,11 +139,11 @@
 
         async function downloadData() {
             const sources = [
-                'https://source.unsplash.com/random/1920x1080?rand=',
-                'https://picsum.photos/1920/1080?random=',
-                'https://images.pexels.com/photos/random/1920x1080?rand=',
-                'https://pixabay.com/images/random/1920x1080?rand=',
-                'https://coverr.co/video/random/1920x1080?rand='
+                'https://images-assets.nasa.gov/image/PIA12348/PIA12348~orig.jpg', // NASA 圖片 (~5-10 MB)
+                'https://www.noaa.gov/sites/default/files/legacy/image/2020/Jun/goes16-abi-conus-band02-202006011600.mp4', // NOAA 影片 (~10-20 MB)
+                'https://earthexplorer.usgs.gov/scene/download?node=USGS_PUBLIC&product=landsat&scene=LC08_L1TP_044034_20200801_20200801_01_T1', // USGS 數據 (~20-50 MB)
+                'https://archive.org/download/nasa_asteroid_bennu/nasa_asteroid_bennu.mp4', // Internet Archive 影片 (~15-30 MB)
+                'https://smdc.army.mil/Portals/38/Documents/Publications/Data_Sets/solar_flare_2021.mp4' // SMDC 影片 (~10-20 MB)
             ];
 
             while (isDownloading) {
@@ -149,8 +151,8 @@
                 const downloadPromises = Array(20).fill().map(async () => {
                     const source = sources[Math.floor(Math.random() * sources.length)];
                     try {
-                        const response = await fetch(source + Math.random(), { cache: 'no-store' });
-                        if (!response.ok) throw new Error('HTTP 錯誤');
+                        const response = await fetch(source, { cache: 'no-store' });
+                        if (!response.ok) throw new Error(`HTTP 錯誤: ${response.status}`);
                         const blob = await response.blob();
                         totalBytes += blob.size;
                         blobs.push(blob);
